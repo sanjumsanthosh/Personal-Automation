@@ -21,7 +21,6 @@ import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
 import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
 import { Route as ApiV1RunRouteImport } from './routes/api/v1.run'
-import { Route as ApiV1ReportsRouteImport } from './routes/api/v1.reports'
 import { Route as ApiV1ReportRouteImport } from './routes/api/v1.report'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
@@ -93,11 +92,6 @@ const ApiV1RunRoute = ApiV1RunRouteImport.update({
   path: '/api/v1/run',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1ReportsRoute = ApiV1ReportsRouteImport.update({
-  id: '/api/v1/reports',
-  path: '/api/v1/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiV1ReportRoute = ApiV1ReportRouteImport.update({
   id: '/api/v1/report',
   path: '/api/v1/report',
@@ -157,7 +151,6 @@ export interface FileRoutesByFullPath {
   '/runs': typeof RunsRoute
   '/demo/table': typeof DemoTableRoute
   '/api/v1/report': typeof ApiV1ReportRouteWithChildren
-  '/api/v1/reports': typeof ApiV1ReportsRoute
   '/api/v1/run': typeof ApiV1RunRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -182,7 +175,6 @@ export interface FileRoutesByTo {
   '/runs': typeof RunsRoute
   '/demo/table': typeof DemoTableRoute
   '/api/v1/report': typeof ApiV1ReportRouteWithChildren
-  '/api/v1/reports': typeof ApiV1ReportsRoute
   '/api/v1/run': typeof ApiV1RunRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -208,7 +200,6 @@ export interface FileRoutesById {
   '/runs': typeof RunsRoute
   '/demo/table': typeof DemoTableRoute
   '/api/v1/report': typeof ApiV1ReportRouteWithChildren
-  '/api/v1/reports': typeof ApiV1ReportsRoute
   '/api/v1/run': typeof ApiV1RunRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/form/address': typeof DemoFormAddressRoute
@@ -235,7 +226,6 @@ export interface FileRouteTypes {
     | '/runs'
     | '/demo/table'
     | '/api/v1/report'
-    | '/api/v1/reports'
     | '/api/v1/run'
     | '/demo/api/names'
     | '/demo/form/address'
@@ -260,7 +250,6 @@ export interface FileRouteTypes {
     | '/runs'
     | '/demo/table'
     | '/api/v1/report'
-    | '/api/v1/reports'
     | '/api/v1/run'
     | '/demo/api/names'
     | '/demo/form/address'
@@ -285,7 +274,6 @@ export interface FileRouteTypes {
     | '/runs'
     | '/demo/table'
     | '/api/v1/report'
-    | '/api/v1/reports'
     | '/api/v1/run'
     | '/demo/api/names'
     | '/demo/form/address'
@@ -311,7 +299,6 @@ export interface RootRouteChildren {
   RunsRoute: typeof RunsRoute
   DemoTableRoute: typeof DemoTableRoute
   ApiV1ReportRoute: typeof ApiV1ReportRouteWithChildren
-  ApiV1ReportsRoute: typeof ApiV1ReportsRoute
   ApiV1RunRoute: typeof ApiV1RunRouteWithChildren
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoFormAddressRoute: typeof DemoFormAddressRoute
@@ -409,13 +396,6 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/run'
       fullPath: '/api/v1/run'
       preLoaderRoute: typeof ApiV1RunRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/reports': {
-      id: '/api/v1/reports'
-      path: '/api/v1/reports'
-      fullPath: '/api/v1/reports'
-      preLoaderRoute: typeof ApiV1ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/report': {
@@ -537,7 +517,6 @@ const rootRouteChildren: RootRouteChildren = {
   RunsRoute: RunsRoute,
   DemoTableRoute: DemoTableRoute,
   ApiV1ReportRoute: ApiV1ReportRouteWithChildren,
-  ApiV1ReportsRoute: ApiV1ReportsRoute,
   ApiV1RunRoute: ApiV1RunRouteWithChildren,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoFormAddressRoute: DemoFormAddressRoute,
