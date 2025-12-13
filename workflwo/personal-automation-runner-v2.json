@@ -1,0 +1,991 @@
+{
+  "name": "Personal Automation - Run Research (Webhook: runId) [LangChain+Perplexity+Gemini]",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "learn-research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -5792,
+        36
+      ],
+      "id": "2c683895-43b2-43b6-bbd9-4df8d8731af6",
+      "name": "Webhook (runId)",
+      "webhookId": "cdb75f0e-5a33-4d36-a9c1-6a4512f23b59"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3c9e2a5-2c27-4c35-90d2-fb6d6b6a8e42",
+              "name": "baseUrl",
+              "value": "https://personal-automation.vercel.app",
+              "type": "string"
+            },
+            {
+              "id": "2d5e7c4b-1b10-4f0b-9c33-0199fbbb8e8a",
+              "name": "runId",
+              "value": "={{$json.query.runId}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5568,
+        36
+      ],
+      "id": "428b04bf-5a9b-4807-ae13-f48736d4a818",
+      "name": "Init"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.baseUrl}}/api/v1/run/{{$json.runId}}",
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5344,
+        36
+      ],
+      "id": "5dfcbda3-fed8-4d53-928f-bc9c4a2382db",
+      "name": "Get Run (no auth)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8d81f3ae-526f-4481-9cf7-06dd7f854aae",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5120,
+        36
+      ],
+      "id": "0db4c75c-7a3c-45f1-8e41-a114c0153d6b",
+      "name": "Run OK?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\nif (!body || !body.id) {\n  return [{ json: { error: 'Run not found or invalid response', details: $json } }];\n}\nconst entries = body.entries || [];\nconst entry_ids = entries.map(e => e.id);\nreturn [{ json: { run: body, entries, entry_ids } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4896,
+        204
+      ],
+      "id": "717b0a40-d23e-4928-b0ec-4c1f01d32b21",
+      "name": "Extract Run"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$node['Extract Run'].json.entries.length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4672,
+        204
+      ],
+      "id": "efe886f3-cdce-4de0-9f05-288f5761a52f",
+      "name": "Has Entries?"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.details.entries }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a research assistant that converts JSON entries into structured research cards. Transform the provided JSON array into a JSON array named \"cards\" with complete information preservation.  For each card, include:  1. \"entry_id\": Preserve the original ID from the input  2. \"title\": Create a clear, specific title that captures ALL aspects of what the user wants:    - Include the main topic/paper name    - Reference specific outputs they want (summary, authors, university, etc.)    - Be concrete, not generic    - Example format: \"Summary, Authors, and University Behind [Paper Name]\"  3. \"why_it_matters\": Write 2-4 sentences in natural, conversational language that:    - Captures EVERY piece of information the user mentioned    - Explains their complete intent without losing any details    - States exactly what they want to learn (summary AND authors AND university, etc.)    - Uses natural phrasing like \"The user wants to...\" or \"They're looking to...\"    - CRITICAL: If the user mentions wanting multiple things (summary + authors + university), ALL must appear in this section  4. \"refined_questions\": An array of simple, standalone questions that:    - Break down EVERY aspect of the original query    - Include a question for each distinct piece of information requested    - Are understandable by non-experts    - Can each be answered independently    - Cover all topics mentioned: if user asks about summary, authors, AND university, create separate questions for each    - Example patterns: \"What is [paper name] about?\", \"Who are the authors of [paper name]?\", \"Which university released [paper name]?\"  5. \"keywords\": An array of relevant search terms extracted from the user's query  CRITICAL RULE: Do not generalize or omit any information from the user's input. If they mention wanting 3 things, ensure all 3 appear in \"why_it_matters\" and have corresponding questions in \"refined_questions\".  Output ONLY valid JSON."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -4448,
+        -72
+      ],
+      "id": "aebf089b-c29f-439a-bf91-21f4f893edcd",
+      "name": "Basic LLM Chain (Groq Cards)"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -4376,
+        152
+      ],
+      "id": "0b4c55b2-f7e9-42b3-8e80-a75a12f08c67",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "zpyKK3aC3kQssNq5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const pickText = (obj) => {\n  // Common shapes from AI nodes/templates\n  return obj?.text || obj?.output || obj?.response || obj?.data?.text || obj?.result || '';\n};\n\nconst raw = $json;\nconst content = pickText(raw);\nif (!content || typeof content !== 'string') {\n  return [{ json: { error: 'Groq chain returned no text content', raw } }];\n}\n\nlet cards;\ntry {\n  cards = JSON.parse(content);\n} catch (e) {\n  // Sometimes the chain wraps JSON in text; try a last-resort extraction\n  const m = content.match(/\\[[\\s\\S]*\\]/);\n  if (m) {\n    try { cards = JSON.parse(m[0]); } catch (e2) {\n      return [{ json: { error: 'Failed to parse cards JSON', parseError: e2.message, rawText: content } }];\n    }\n  } else {\n    return [{ json: { error: 'Failed to parse cards JSON', parseError: e.message, rawText: content } }];\n  }\n}\n\nreturn [{ json: { cards } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4096,
+        32
+      ],
+      "id": "6af62a0c-cc15-4f29-9eeb-99782641780e",
+      "name": "Parse Cards JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cards = $input.first().json.cards || [];\nconst combined = cards.map((c, i) => `${i + 1}. ${c.refined_questions}`).join('\\n');\nreturn [{ json: { cards, combinedQuery: combined } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3872,
+        32
+      ],
+      "id": "ef148a5e-e698-4942-a246-2a427296a084",
+      "name": "Build Perplexity Query"
+    },
+    {
+      "parameters": {
+        "messages": {
+          "message": [
+            {
+              "content": "For each numbered question, gather detailed raw information and include sources/URLs when possible.",
+              "role": "system"
+            },
+            {
+              "content": "={{$node['Build Perplexity Query'].json.combinedQuery}}"
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexity",
+      "typeVersion": 1,
+      "position": [
+        -3648,
+        32
+      ],
+      "id": "7895ea91-66f0-485f-a32c-6cb986325248",
+      "name": "Perplexity Research",
+      "credentials": {
+        "perplexityApi": {
+          "id": "3lHjwQludnHPzjhC",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json;\n\nconst text =\n  raw?.text ||\n  raw?.content ||\n  raw?.choices?.[0]?.message?.content ||\n  raw?.data?.text ||\n  '';\n\nconst citations = raw?.citations || [];\nconst search_results = raw?.search_results || [];\n\nreturn [{ json: { perplexityText: text, citations, search_results } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3424,
+        32
+      ],
+      "id": "938bd5bf-95d7-4a42-b4c7-97ebdec808e0",
+      "name": "Extract Perplexity"
+    },
+    {
+      "parameters": {
+        "jsCode": "const TOP_N_URLS = 5;\nconst MAX_CHARS_PER_URL = 10000;\n\nreturn [{ json: { TOP_N_URLS, MAX_CHARS_PER_URL } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3200,
+        32
+      ],
+      "id": "f5ebc2eb-a320-4d38-b7d5-3b1d4879cf89",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "const TOP_N = $node['Config'].json.TOP_N_URLS;\n\nconst results = $node['Extract Perplexity'].json.search_results || [];\nconst urls = results.map(r => r.url).filter(Boolean);\n\n// de-dupe + top N\nconst unique = [...new Set(urls)].slice(0, TOP_N);\n\nreturn [{ json: { urls: unique } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2976,
+        32
+      ],
+      "id": "f148ce50-d38c-4faa-8c1a-f3d61e2e76f8",
+      "name": "Select Top URLs"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "urls",
+        "options": {
+          "destinationFieldName": "url"
+        }
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -2752,
+        32
+      ],
+      "id": "82c86ec8-af3f-494f-a33c-512e631d142a",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2528,
+        32
+      ],
+      "id": "0ace3731-e65b-4bb2-a6d9-bd512783cb03",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2304,
+        56
+      ],
+      "id": "505e9aac-0bb3-40c7-beb3-61d71ebb6dee",
+      "name": "HTTP Request (GET page)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// rawHtml -> compact-ish plain text, no libraries\nfunction htmlToContentText(rawHtml, options = {}) {\n  const opts = {\n    maxChars: options.maxChars ?? 12000,\n    keepNewlines: options.keepNewlines ?? true,\n    dropBoilerplateTags: options.dropBoilerplateTags ?? true,\n    dropLinkLists: options.dropLinkLists ?? true,\n    preferMainContent: options.preferMainContent ?? true,\n    minLineLen: options.minLineLen ?? 2,\n  };\n\n  if (!rawHtml || typeof rawHtml !== \"string\") return \"\";\n\n  let s = rawHtml.replace(/\\r\\n?/g, \"\\n\");\n\n  // --- (A) Try to focus on main content early (before stripping tags) ---\n  if (opts.preferMainContent) {\n    const pickLargest = (reList) => {\n      let best = \"\";\n      for (const re of reList) {\n        const m = s.match(re);\n        if (m && m[1] && m[1].length > best.length) best = m[1];\n      }\n      return best;\n    };\n\n    const article = pickLargest([\n      /<article\\b[^>]*>([\\s\\S]*?)<\\/article>/gi,\n      /<main\\b[^>]*>([\\s\\S]*?)<\\/main>/gi,\n    ]);\n\n    if (article && article.length > 400) {\n      s = article;\n    } else {\n      const body = s.match(/<body\\b[^>]*>([\\s\\S]*?)<\\/body>/i);\n      if (body && body[1] && body[1].length > 400) s = body[1];\n    }\n  }\n\n  // --- (B) Remove non-content blocks ---\n  s = s.replace(/<!--[\\s\\S]*?-->/g, \" \");\n  s = s.replace(/<script\\b[\\s\\S]*?<\\/script>/gi, \" \");\n  s = s.replace(/<style\\b[\\s\\S]*?<\\/style>/gi, \" \");\n  s = s.replace(/<noscript\\b[\\s\\S]*?<\\/noscript>/gi, \" \");\n  s = s.replace(/<svg\\b[\\s\\S]*?<\\/svg>/gi, \" \");\n  s = s.replace(/<iframe\\b[\\s\\S]*?<\\/iframe>/gi, \" \");\n  s = s.replace(/<head\\b[\\s\\S]*?<\\/head>/gi, \" \");\n\n  if (opts.dropBoilerplateTags) {\n    s = s.replace(/<nav\\b[\\s\\S]*?<\\/nav>/gi, \" \");\n    s = s.replace(/<header\\b[\\s\\S]*?<\\/header>/gi, \" \");\n    s = s.replace(/<footer\\b[\\s\\S]*?<\\/footer>/gi, \" \");\n    s = s.replace(/<aside\\b[\\s\\S]*?<\\/aside>/gi, \" \");\n    s = s.replace(/<form\\b[\\s\\S]*?<\\/form>/gi, \" \");\n  }\n\n  // --- (C) Preserve some structure before tag stripping ---\n  s = s.replace(/<br\\s*\\/?>/gi, \"\\n\");\n  s = s.replace(/<\\/(p|div|section|article|li|ul|ol|h1|h2|h3|h4|h5|h6|tr|table|blockquote)>/gi, \"\\n\");\n\n  // --- (D) Strip tags ---\n  s = s.replace(/<[^>]+>/g, \" \");\n\n  // --- (E) Decode a small set of entities ---\n  const named = {\n    \"&nbsp;\": \" \",\n    \"&amp;\": \"&\",\n    \"&lt;\": \"<\",\n    \"&gt;\": \">\",\n    \"&quot;\": '\"',\n    \"&apos;\": \"'\",\n  };\n  s = s.replace(/&(nbsp|amp|lt|gt|quot|apos);/g, (m) => named[m] ?? m);\n  s = s.replace(/&#(\\d+);/g, (_, d) => {\n    const code = parseInt(d, 10);\n    return Number.isFinite(code) ? String.fromCodePoint(code) : \"\";\n  });\n  s = s.replace(/&#x([0-9a-fA-F]+);/g, (_, h) => {\n    const code = parseInt(h, 16);\n    return Number.isFinite(code) ? String.fromCodePoint(code) : \"\";\n  });\n\n  // --- (F) Line cleanup + \"UI directive junk\" filtering ---\n  let lines = s\n    .split(\"\\n\")\n    .map((l) => l.replace(/[ \\t]+/g, \" \").trim())\n    .filter((l) => l.length >= opts.minLineLen);\n\n  // Remove lines that look like Alpine/templating directives or attribute dumps\n  const looksLikeDirectiveJunk = (l) => {\n    // examples: @click=\"...\", x-text=\"...\", maxlength=\"2000\", class=\"...\"\n    const hasDirective = /(^|[\\s])@[\\w.-]+=\"/.test(l) || /(^|[\\s])x-[\\w:.-]+=\"/i.test(l);\n    const attrHeavy =\n      (l.match(/=\"/g) || []).length >= 2 ||\n      (l.match(/='?/g) || []).length >= 3;\n\n    // Many quotes/equals but little natural language\n    const letters = (l.match(/[A-Za-z]/g) || []).length;\n    const total = l.length || 1;\n    const letterRatio = letters / total;\n\n    // Also catch \"0\\\" class=...\" style garbage\n    const startsWeird = /^[0-9]+\\s*[\"']\\s*class=/.test(l) || /^[0-9]+\\s*}\\\\\"/.test(l);\n\n    return startsWeird || hasDirective || (attrHeavy && letterRatio < 0.35);\n  };\n\n  lines = lines.filter((l) => !looksLikeDirectiveJunk(l));\n\n  // Optional: drop nav-like \"link lists\", but avoid removing real sentences/abstract lines\n  if (opts.dropLinkLists) {\n    lines = lines.filter((l) => {\n      // keep anything that looks like a sentence/abstract\n      if (/[.!?]\\s*$/.test(l) || /^abstract[:\\s]/i.test(l)) return true;\n\n      const words = l.split(/\\s+/).filter(Boolean);\n      if (words.length === 0) return false;\n\n      const avgWordLen = words.reduce((a, w) => a + w.length, 0) / words.length;\n\n      // Heuristic: many short tokens + no punctuation often indicates menus/tags\n      const isMenuLike = words.length >= 10 && avgWordLen <= 4.2 && !/[,:;()]/.test(l);\n      return !isMenuLike;\n    });\n  }\n\n  // --- (G) Join + final normalization ---\n  s = opts.keepNewlines ? lines.join(\"\\n\") : lines.join(\" \");\n  s = s.replace(/[ \\t]+/g, \" \").trim();\n  if (opts.keepNewlines) s = s.replace(/\\n{3,}/g, \"\\n\\n\");\n\n  // --- (H) Truncate ---\n  if (s.length > opts.maxChars) s = s.slice(0, opts.maxChars) + \"\\n[TRUNCATED]\";\n  return s;\n}\n\n// ---- n8n / workflow glue (as in your snippet) ----\nconst MAX_CHARS = $(\"Config\").first().json.MAX_CHARS_PER_URL;\nconst rawHtml = $input.first().json.data || \" \";\n\nconst cleanedText = htmlToContentText(rawHtml, {\n  maxChars: MAX_CHARS,\n  keepNewlines: true,\n  dropBoilerplateTags: true,\n  dropLinkLists: true,\n  preferMainContent: true,\n});\n\nconst ok = !!cleanedText && cleanedText.length > 50;\n\nreturn [\n  {\n    json: {\n      url: $(\"Loop Over Items\").first().json.url,\n      ok,\n      cleanedText,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2080,
+        128
+      ],
+      "id": "0b746c05-c0ba-4e2b-9be7-76eda8543d8f",
+      "name": "Clean Page Text"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "aggregatedResults",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -2304,
+        -136
+      ],
+      "id": "971fa431-a5ac-4969-aa28-7099a0452e85",
+      "name": "Aggregate Loop Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get aggregated results from the Aggregate node\nconst aggregated = $input.first().json.aggregatedResults || [];\n\n// Filter only successful extractions\nconst ok = aggregated.filter(x => x.ok && x.cleanedText);\n\n// Build evidence pack from aggregated data\nconst evidencePack = ok\n  .map(x => `# ${x.url}\\n${x.cleanedText}`)\n  .join('\\n\\n');\n\nreturn [{ \n  json: { \n    evidencePack, \n    scraped_urls: ok.map(x => x.url),\n    total_urls_processed: aggregated.length,\n    successful_extractions: ok.length\n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2080,
+        -136
+      ],
+      "id": "ce7c5e65-fb0a-4e8f-b8d6-d5a5cb37636e",
+      "name": "Build Evidence Pack"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Technical Educator who explains complex topics through engaging, flowing narration—like teaching a curious friend over coffee.\n\nTASK\nWrite a tutorial-style Markdown report answering the user’s original question:\n{{ $('Build Perplexity Query').item.json.combinedQuery }}\n\nAVAILABLE MATERIAL (use these as your only sources of truth)\n1) Research cards (JSON):\n{{JSON.stringify($node['Build Perplexity Query'].json.cards)}}\n\n2) Raw research findings:\n{{$node['Extract Perplexity'].json.perplexityText}}\n\n3) Citations JSON (maps claims to sources):\n{{JSON.stringify($node['Extract Perplexity'].json.citations)}}\n\n4) Extra scraped context (top URLs, cleaned & capped):\n{{$node['Build Evidence Pack'].json.evidencePack}}\n\nWRITING STYLE (tone + flow)\n- Write like you’re talking to “you” (the reader) in a friendly, confident, coffee-chat vibe.\n- Start simple and build depth gradually; don’t front-load heavy jargon.\n- Use continuous prose where ideas connect naturally; avoid rigid, checklist-like writing.\n- For technical terms/acronyms, **bold** them at first use and immediately explain in plain English, including a quick “why it’s named that way” when helpful.\n- Use humor/emojis sparingly and only if it truly improves clarity.\n- When something is ambiguous or conflicting across sources, say so plainly and explain what seems most likely.\n\nSTRUCTURE (must follow)\n- Open with:\n  \"Here's what we'll cover today:\"\n  followed by a detailed bullet outline of the main topics (make it specific, not generic).\n- Then write the tutorial with topic sections using ONLY ## headings (one topic per ## heading).\n- End with exactly:\n  \"# What to do next\"\n  followed by a bullet list of concrete follow-up topics mentioned throughout the report.\n\nCONTENT RULES (important)\n- Do not miss important details: weave in every meaningful technical term, tool, project name, integration, constraint, and link that appears in the provided materials.\n- If the source mentions a descriptive table/list of specs, don’t recreate it; instead say:\n  \"The full list of technical specs is available on the page.\"\n- Include at least one concrete worked example with real numbers and step-by-step reasoning when the sources provide enough detail; otherwise create a small illustrative example and label it as illustrative.\n- Avoid long verbatim quotes. If a quote is essential, keep it very short (max ~20 words) and attribute it.\n\nCITATIONS + SOURCES (must follow)\n- Every major claim should be traceable to a URL from (3) Citations JSON and/or (4) Evidence Pack.\n- Use lightweight inline markers like [1], [2] in the text.\n- Finish with:\n  \"## Sources\"\n  and list only the URLs referenced, one per line, prefixed by their number (e.g., \"1. https://...\").\n- Only include URLs that appear in the provided citations/evidence pack (no new browsing).\n\nOUTPUT\nReturn only the final Markdown report (no preamble, no analysis).\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1856,
+        -136
+      ],
+      "id": "342bb46f-cfb4-491f-8f90-a6be72c90cd8",
+      "name": "Gemini -> Markdown",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "F5kdws7n8N8OQzMN",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content.parts[0];\nconst markdown = raw?.text || raw?.content || raw?.candidates?.[0]?.content?.parts?.[0]?.text || raw?.data?.text || raw?.output || '';\nif (!markdown || typeof markdown !== 'string') {\n  return [{ json: { error: 'Gemini returned no markdown', raw } }];\n}\nreturn [{ json: { markdown } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1504,
+        -136
+      ],
+      "id": "dc0e39d5-d5d6-41fd-b70e-637d217ce0fa",
+      "name": "Extract Markdown"
+    },
+    {
+      "parameters": {
+        "jsCode": "const run = $('Extract Run').first().json.details;\nconst entry_ids = $('Extract Run').first().json.details.entries.map(e => e.id);\nconst sources = $('Perplexity Research').first().json.citations;\nconst markdown = $input.first().json.markdown;\n\nconst card = $('Build Perplexity Query').first().json.cards[0];\nconst title = card.title;\nconst whyItMappters = card.why_it_matters;\n\nconst markdown_content = [\n  `## Why it matters`,\n  `${whyItMappters || ''}`,\n  '',\n  `## Report`,\n  `${markdown || ''}`,\n  ''\n].join('\\n');\n\nreturn {\n  summary: title || '',\n  markdown_content,\n  entry_ids: entry_ids,\n  run_id: run.id,\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        -128
+      ],
+      "id": "28190ebd-7eb0-4a0d-a0f6-a8aa76edb4d4",
+      "name": "Prepare Report Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/report",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "summary",
+              "value": "={{ $json.summary }}"
+            },
+            {
+              "name": "markdown_content",
+              "value": "={{ $json.markdown_content }}"
+            },
+            {
+              "name": "entry_ids",
+              "value": "={{ $json.entry_ids }}"
+            },
+            {
+              "name": "run_id",
+              "value": "={{ $json.run_id }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1056,
+        -136
+      ],
+      "id": "9fcd05c3-3366-4b98-a2e9-df056f45fd90",
+      "name": "Save Report (no auth)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.statusCode}}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -832,
+        -136
+      ],
+      "id": "39f5b614-c197-4c04-9cfe-da9305c570b7",
+      "name": "Report Saved?"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { report_id: $input.first().json.report_id } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        -88
+      ],
+      "id": "30ae06e3-e819-4e44-8743-44bc67d43c6f",
+      "name": "Extract Report ID"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{ $('Extract Run').item.json.details.id }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "completed"
+            }
+          ]
+        },
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -384,
+        -88
+      ],
+      "id": "ccccfcb8-1a6b-494d-a363-a49855741afc",
+      "name": "Update Run -> completed (no auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"run_id\": \"{{$node['Init'].json.runId}}\",\n  \"report_id\": \"{{ $('Extract Report ID').item.json.report_id }}\",\n  \"entries_processed\": {{ $('Prepare Report Payload').item.json.entry_ids.length }}\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        -88
+      ],
+      "id": "9886730b-50cb-4ba9-9016-4cd753ae5161",
+      "name": "Respond Success"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Init'].json.runId}}",
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4384,
+        328
+      ],
+      "id": "02277be0-b973-4ce5-8266-ce404873ab19",
+      "name": "Update Run -> completed (no entries, no auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"run_id\": \"{{$node['Init'].json.runId}}\",\n  \"message\": \"No pending entries to process\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -4096,
+        328
+      ],
+      "id": "3ed6c500-6acf-49aa-bb31-d6f859d7d3fc",
+      "name": "Respond No Work"
+    },
+    {
+      "parameters": {
+        "jsCode": "const runId = $node['Init'].json.runId;\nconst err = $json.error || 'Workflow failed';\nreturn [{ json: { runId, error: err } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        -304
+      ],
+      "id": "6e7abd57-146f-4366-92cc-c179dad4ec15",
+      "name": "Prepare Error"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Init'].json.runId}}",
+        "options": {
+          "response": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -384,
+        -304
+      ],
+      "id": "262f773c-0eeb-4cdc-86b8-ec72f4849682",
+      "name": "Update Run -> failed (no auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"run_id\": \"{{$node['Init'].json.runId}}\",\n  \"error\": \"={{$node['Prepare Error'].json.error}}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        -304
+      ],
+      "id": "f42c2053-ec5c-4832-ae55-4a5472b1bd28",
+      "name": "Respond Error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (runId)": {
+      "main": [
+        [
+          {
+            "node": "Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init": {
+      "main": [
+        [
+          {
+            "node": "Get Run (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Run (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Run OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run OK?": {
+      "main": [
+        [
+          {
+            "node": "Extract Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Run": {
+      "main": [
+        [
+          {
+            "node": "Has Entries?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Entries?": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain (Groq Cards)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Run -> completed (no entries, no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain (Groq Cards)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain (Groq Cards)": {
+      "main": [
+        [
+          {
+            "node": "Parse Cards JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cards JSON": {
+      "main": [
+        [
+          {
+            "node": "Build Perplexity Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Perplexity Query": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Research": {
+      "main": [
+        [
+          {
+            "node": "Extract Perplexity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Perplexity": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Select Top URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Top URLs": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Loop Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request (GET page)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Loop Results": {
+      "main": [
+        [
+          {
+            "node": "Build Evidence Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (GET page)": {
+      "main": [
+        [
+          {
+            "node": "Clean Page Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Page Text": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Evidence Pack": {
+      "main": [
+        [
+          {
+            "node": "Gemini -> Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini -> Markdown": {
+      "main": [
+        [
+          {
+            "node": "Extract Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Markdown": {
+      "main": [
+        [
+          {
+            "node": "Prepare Report Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Report Payload": {
+      "main": [
+        [
+          {
+            "node": "Save Report (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Report (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Report Saved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Saved?": {
+      "main": [
+        [
+          {
+            "node": "Extract Report ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Report ID": {
+      "main": [
+        [
+          {
+            "node": "Update Run -> completed (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> completed (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> completed (no entries, no auth)": {
+      "main": [
+        [
+          {
+            "node": "Respond No Work",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error": {
+      "main": [
+        [
+          {
+            "node": "Update Run -> failed (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> failed (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0ebcf501-f91a-4232-945c-cff65b0123c9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b72d34960c1ebf40f3d5b336f5ef34675ab063d7a51ff0f5edab0a347f8670c1"
+  },
+  "id": "66z05N8EyuQKVeJE",
+  "tags": []
+}
