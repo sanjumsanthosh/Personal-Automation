@@ -6,11 +6,12 @@ import {
     createColumnHelper,
     type ColumnDef,
 } from '@tanstack/react-table'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase.client'
+import { logger } from '@/lib/logger'
 import type { Report, ReportStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Eye, Check } from 'lucide-react'
+import { Eye, Check, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface ReportWithRun extends Report {
@@ -30,6 +31,8 @@ interface ReportsTableProps {
 }
 
 export function ReportsTable({ onSelectReport, selectedReportId }: ReportsTableProps) {
+    const queryClient = useQueryClient()
+
     const { data: reports = [], isLoading } = useQuery({
         queryKey: ['reports'],
         queryFn: async () => {
@@ -40,6 +43,64 @@ export function ReportsTable({ onSelectReport, selectedReportId }: ReportsTableP
 
             if (error) throw error
             return (data || []) as ReportWithRun[]
+        },
+    })
+
+    // Delete report mutation - also resets associated entries and deletes associated run
+    const deleteReportMutation = useMutation({
+        mutationFn: async (report: ReportWithRun) => {
+            logger.info('ReportsTable', 'Deleting report', { reportId: report.id, runId: report.run_id, entryIds: report.entry_ids })
+
+            // First, delete associated entries
+            if (report.entry_ids && report.entry_ids.length > 0) {
+                const { error: entriesError } = await supabase
+                    .from('entries')
+                    .delete()
+                    .in('id', report.entry_ids)
+
+                if (entriesError) {
+                    logger.error('ReportsTable', 'Failed to delete entries', entriesError, { reportId: report.id })
+                    throw entriesError
+                }
+                logger.info('ReportsTable', 'Deleted entries', { count: report.entry_ids.length })
+            }
+
+            // Delete the report
+            const { error: reportError } = await supabase
+                .from('reports')
+                .delete()
+                .eq('id', report.id)
+
+            if (reportError) {
+                logger.error('ReportsTable', 'Failed to delete report', reportError, { reportId: report.id })
+                throw reportError
+            }
+
+            // Delete the associated run if it exists
+            if (report.run_id) {
+                const { error: runError } = await supabase
+                    .from('processing_runs')
+                    .delete()
+                    .eq('id', report.run_id)
+
+                if (runError) {
+                    logger.error('ReportsTable', 'Failed to delete run', runError, { runId: report.run_id })
+                    // Don't throw here - report is already deleted, just log the error
+                } else {
+                    logger.info('ReportsTable', 'Run deleted successfully', { runId: report.run_id })
+                }
+            }
+
+            logger.info('ReportsTable', 'Report deleted successfully', { reportId: report.id })
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['reports'] })
+            queryClient.invalidateQueries({ queryKey: ['entries'] })
+            queryClient.invalidateQueries({ queryKey: ['runs'] })
+            onSelectReport(null)
+        },
+        onError: (error) => {
+            logger.error('ReportsTable', 'Delete report mutation failed', error)
         },
     })
 
@@ -103,12 +164,29 @@ export function ReportsTable({ onSelectReport, selectedReportId }: ReportsTableP
                                 <Check className="h-3 w-3" />
                             </Button>
                         )}
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                const entryCount = row.original.entry_ids?.length || 0
+                                const message = entryCount > 0
+                                    ? `Delete this report, ${entryCount} entries, and associated run?`
+                                    : 'Delete this report?'
+                                if (confirm(message)) {
+                                    deleteReportMutation.mutate(row.original)
+                                }
+                            }}
+                        >
+                            <Trash2 className="h-3 w-3" />
+                        </Button>
                     </div>
                 ),
-                size: 140,
+                size: 180,
             }),
         ],
-        [onSelectReport]
+        [onSelectReport, deleteReportMutation]
     )
 
     const table = useReactTable({

@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase.client'
 import { logger } from '@/lib/logger'
 import type { Report, ReportStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { X, Check, RefreshCw, ExternalLink, Maximize2 } from 'lucide-react'
+import { X, Check, RefreshCw, ExternalLink, Maximize2, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -41,6 +42,73 @@ export function ReportPreviewPanel({ report, onClose }: ReportPreviewPanelProps)
         },
     })
 
+    const deleteReportMutation = useMutation({
+        mutationFn: async () => {
+            logger.info('ReportPreviewPanel', 'Deleting report', { reportId: report.id, runId: report.run_id, entryIds: report.entry_ids })
+
+            // First, delete associated entries
+            if (report.entry_ids && report.entry_ids.length > 0) {
+                const { error: entriesError } = await supabase
+                    .from('entries')
+                    .delete()
+                    .in('id', report.entry_ids)
+
+                if (entriesError) {
+                    logger.error('ReportPreviewPanel', 'Failed to delete entries', entriesError, { reportId: report.id })
+                    throw entriesError
+                }
+                logger.info('ReportPreviewPanel', 'Deleted entries', { count: report.entry_ids.length })
+            }
+
+            // Delete the report
+            const { error: reportError } = await supabase
+                .from('reports')
+                .delete()
+                .eq('id', report.id)
+
+            if (reportError) {
+                logger.error('ReportPreviewPanel', 'Failed to delete report', reportError, { reportId: report.id })
+                throw reportError
+            }
+
+            // Delete the associated run if it exists
+            if (report.run_id) {
+                const { error: runError } = await supabase
+                    .from('processing_runs')
+                    .delete()
+                    .eq('id', report.run_id)
+
+                if (runError) {
+                    logger.error('ReportPreviewPanel', 'Failed to delete run', runError, { runId: report.run_id })
+                    // Don't throw here - report is already deleted, just log the error
+                } else {
+                    logger.info('ReportPreviewPanel', 'Run deleted successfully', { runId: report.run_id })
+                }
+            }
+
+            logger.info('ReportPreviewPanel', 'Report deleted successfully', { reportId: report.id })
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['reports'] })
+            queryClient.invalidateQueries({ queryKey: ['entries'] })
+            queryClient.invalidateQueries({ queryKey: ['runs'] })
+            onClose()
+        },
+        onError: (error) => {
+            logger.error('ReportPreviewPanel', 'Delete report mutation failed', error)
+        },
+    })
+
+    const handleDelete = () => {
+        const entryCount = report.entry_ids?.length || 0
+        const message = entryCount > 0
+            ? `Delete this report, ${entryCount} entries, and associated run?`
+            : 'Delete this report?'
+        if (confirm(message)) {
+            deleteReportMutation.mutate()
+        }
+    }
+
     const config = statusConfig[report.status]
 
     return (
@@ -54,6 +122,13 @@ export function ReportPreviewPanel({ report, onClose }: ReportPreviewPanelProps)
                             <Maximize2 className="h-5 w-5 text-gray-500" />
                         </button>
                     </a>
+                    <button
+                        onClick={handleDelete}
+                        className="p-1 hover:bg-red-50 rounded"
+                        title="Delete Report"
+                    >
+                        <Trash2 className="h-5 w-5 text-red-500" />
+                    </button>
                     <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
                         <X className="h-5 w-5 text-gray-500" />
                     </button>
