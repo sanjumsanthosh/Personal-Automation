@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
     useReactTable,
     getCoreRowModel,
@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger'
 import type { Run, RunStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Play, FileText, Trash2, Eye } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 
 interface RunWithType extends Run {
     types: { name: string } | null
@@ -94,25 +95,30 @@ export function RunsTable({ onSelectRun, selectedRunId }: RunsTableProps) {
     const handleRunNow = async (run: RunWithType) => {
         logger.info('RunsTable', 'Run now triggered', { runId: run.id, runName: run.name })
 
-        // Update status to running
-        await updateRunMutation.mutateAsync({
-            id: run.id,
-            status: 'running',
-            started_at: new Date().toISOString(),
-        })
-
-        // Trigger n8n webhook (fire and forget)
-        const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
-        if (webhookUrl) {
-            logger.info('RunsTable', 'Triggering n8n webhook (deprecated - should use server endpoint)', {
-                runId: run.id,
-                webhookUrl
+        try {
+            // Update status to running
+            await updateRunMutation.mutateAsync({
+                id: run.id,
+                status: 'running',
+                started_at: new Date().toISOString(),
             })
-            fetch(`${webhookUrl}?runId=${run.id}`)
-                .then(() => logger.info('RunsTable', 'Webhook triggered', { runId: run.id }))
-                .catch((error) => logger.error('RunsTable', 'Webhook failed', error, { runId: run.id }))
-        } else {
-            logger.warn('RunsTable', 'No webhook URL configured', { runId: run.id })
+
+            // Call server-side trigger endpoint (handles basic auth)
+            logger.info('RunsTable', 'Triggering run via server endpoint', { runId: run.id })
+            const response = await fetch(`/api/v1/run/${run.id}/trigger`, { method: 'POST' })
+            const result = await response.json()
+
+            if (!response.ok) {
+                logger.error('RunsTable', 'Server trigger failed', undefined, {
+                    runId: run.id,
+                    status: response.status,
+                    error: result.error
+                })
+            } else {
+                logger.info('RunsTable', 'Run triggered successfully', { runId: run.id })
+            }
+        } catch (error) {
+            logger.error('RunsTable', 'Failed to trigger run', error, { runId: run.id })
         }
     }
 
@@ -193,9 +199,15 @@ export function RunsTable({ onSelectRun, selectedRunId }: RunsTableProps) {
                                 </Button>
                             )}
                             {run.status === 'completed' && (
-                                <Button size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
-                                    <FileText className="h-3 w-3 mr-1" /> Report
-                                </Button>
+                                <Link
+                                    to="/reports"
+                                    search={{ runId: run.id }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <Button size="sm" variant="outline">
+                                        <FileText className="h-3 w-3 mr-1" /> Report
+                                    </Button>
+                                </Link>
                             )}
                         </div>
                     )

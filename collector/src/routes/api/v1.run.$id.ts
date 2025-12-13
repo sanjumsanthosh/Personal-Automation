@@ -19,11 +19,21 @@ export const Route = createFileRoute('/api/v1/run/$id')({
                 const body: UpdateRunBody = await request.json()
                 logger.debug('v1.run.$id', 'Update data parsed', { runId, body })
 
+                // current time
+                const currentTime = new Date().toISOString()
+
                 const updateData: Record<string, unknown> = {}
                 if (body.name !== undefined) updateData.name = body.name
                 if (body.status !== undefined) updateData.status = body.status
-                if (body.started_at !== undefined) updateData.started_at = body.started_at
+                if (body.started_at !== undefined) {
+                    updateData.started_at = body.started_at
+                } else if (body.status === 'running') {
+                    updateData.started_at = currentTime
+                }
                 if (body.completed_at !== undefined) updateData.completed_at = body.completed_at
+                else if (body.status === 'completed' || body.status === 'failed') {
+                    updateData.completed_at = currentTime
+                }
 
                 logger.info('v1.run.$id', 'Updating run', { runId, updateData })
 

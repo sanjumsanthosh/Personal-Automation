@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/lib/logger'
 import type { Report, ReportStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { X, Check, RefreshCw, ExternalLink } from 'lucide-react'
+import { X, Check, RefreshCw, ExternalLink, Maximize2 } from 'lucide-react'
 import { format } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -48,9 +48,16 @@ export function ReportPreviewPanel({ report, onClose }: ReportPreviewPanelProps)
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
                 <h2 className="text-lg font-semibold truncate">Report</h2>
-                <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-                    <X className="h-5 w-5 text-gray-500" />
-                </button>
+                <div className="flex items-center gap-1">
+                    <a href={`/report/${report.id}`}>
+                        <button className="p-1 hover:bg-gray-100 rounded" title="View Full Screen">
+                            <Maximize2 className="h-5 w-5 text-gray-500" />
+                        </button>
+                    </a>
+                    <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+                        <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                </div>
             </div>
 
             {/* Metadata Bar */}
@@ -84,7 +91,20 @@ export function ReportPreviewPanel({ report, onClose }: ReportPreviewPanelProps)
                 </div>
 
                 {/* Markdown Content */}
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-sm max-w-none 
+                    prose-headings:font-bold prose-headings:text-gray-900
+                    prose-h1:text-2xl prose-h1:mt-6 prose-h1:mb-4 prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2
+                    prose-h2:text-xl prose-h2:mt-5 prose-h2:mb-3
+                    prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-2
+                    prose-h4:text-base prose-h4:mt-3 prose-h4:mb-1
+                    prose-p:text-gray-700 prose-p:leading-relaxed
+                    prose-a:text-blue-600 prose-a:hover:underline
+                    prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                    prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-lg
+                    prose-ul:list-disc prose-ul:pl-6
+                    prose-ol:list-decimal prose-ol:pl-6
+                    prose-li:my-1
+                    prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:bg-blue-50 prose-blockquote:pl-4 prose-blockquote:py-1 prose-blockquote:italic">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {report.markdown_content}
                     </ReactMarkdown>

@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { ReportsTable } from '../components/ReportsTable'
 import { ReportPreviewPanel } from '../components/ReportPreviewPanel'
+import { supabase } from '../lib/supabase.client'
 import type { Report } from '../lib/types'
 
 interface ReportWithRun extends Report {
@@ -10,10 +12,37 @@ interface ReportWithRun extends Report {
 
 export const Route = createFileRoute('/reports')({
   component: ReportsPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    runId: (search.runId as string) || undefined,
+  }),
 })
 
 function ReportsPage() {
+  const { runId } = Route.useSearch()
   const [selectedReport, setSelectedReport] = useState<ReportWithRun | null>(null)
+
+  // Auto-select report when runId is provided
+  const { data: reportForRun } = useQuery({
+    queryKey: ['report-by-run', runId],
+    queryFn: async () => {
+      if (!runId) return null
+      const { data } = await supabase
+        .from('reports')
+        .select('*, processing_runs:run_id(name, type_id)')
+        .eq('run_id', runId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      return data as ReportWithRun | null
+    },
+    enabled: !!runId,
+  })
+
+  useEffect(() => {
+    if (reportForRun) {
+      setSelectedReport(reportForRun)
+    }
+  }, [reportForRun])
 
   return (
     <div className="min-h-screen">

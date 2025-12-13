@@ -121,7 +121,17 @@ function ExplorePage() {
                                 {/* Expanded Content */}
                                 {expandedId === report.id && (
                                     <div className="border-t border-gray-200 p-4 bg-gray-50">
-                                        <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-800 prose-pre:text-gray-100">
+                                        <div className="prose prose-sm max-w-none 
+                                            prose-headings:font-bold prose-headings:text-gray-900
+                                            prose-h1:text-2xl prose-h1:mt-6 prose-h1:mb-4 prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2
+                                            prose-h2:text-xl prose-h2:mt-5 prose-h2:mb-3
+                                            prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-2
+                                            prose-p:text-gray-700 prose-p:leading-relaxed
+                                            prose-a:text-blue-600 prose-a:hover:underline
+                                            prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                                            prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-pre:rounded-lg
+                                            prose-ul:list-disc prose-ul:pl-6
+                                            prose-ol:list-decimal prose-ol:pl-6">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                 {report.markdown_content}
                                             </ReactMarkdown>

@@ -8,8 +8,10 @@ export const Route = createFileRoute('/api/v1/run/$id/trigger')({
                 const runId = params.id as string
                 logger.info('v1.run.$id.trigger', 'POST request received', { runId })
 
-                // Server-side env var (no VITE_ prefix = not exposed to client)
+                // Server-side env vars (no VITE_ prefix = not exposed to client)
                 const webhookUrl = process.env.N8N_WEBHOOK_URL
+                const n8nUser = process.env.N8N_USER
+                const n8nPassword = process.env.N8N_PASSWORD
 
                 if (!webhookUrl) {
                     logger.error('v1.run.$id.trigger', 'N8N_WEBHOOK_URL not configured', undefined, { runId })
@@ -19,12 +21,20 @@ export const Route = createFileRoute('/api/v1/run/$id/trigger')({
                     )
                 }
 
+                // Build headers with basic auth if credentials are provided
+                const headers: Record<string, string> = {}
+                if (n8nUser && n8nPassword) {
+                    const credentials = Buffer.from(`${n8nUser}:${n8nPassword}`).toString('base64')
+                    headers['Authorization'] = `Basic ${credentials}`
+                    logger.info('v1.run.$id.trigger', 'Using basic auth for n8n webhook', { runId })
+                }
+
                 const fullUrl = `${webhookUrl}?runId=${runId}`
                 logger.info('v1.run.$id.trigger', 'Calling n8n webhook', { runId, url: fullUrl })
 
                 try {
                     const startTime = Date.now()
-                    const response = await fetch(fullUrl)
+                    const response = await fetch(fullUrl, { headers })
                     const responseTime = Date.now() - startTime
                     const responseText = await response.text()
 

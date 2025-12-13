@@ -6,6 +6,7 @@ import type { Run, RunStatus, Entry } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Play, Trash2, FileText, X, Plus, AlertCircle } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
+import { Link } from '@tanstack/react-router'
 
 interface RunWithType extends Run {
     types: { name: string } | null
@@ -305,9 +306,11 @@ export function RunDetailPanel({ runId, onClose, onOpenAddEntries }: RunDetailPa
                     </div>
                 )}
                 {run.status === 'completed' && (
-                    <Button className="w-full" variant="outline">
-                        <FileText className="h-4 w-4 mr-2" /> View Report
-                    </Button>
+                    <Link to="/reports" search={{ runId: runId }} className="w-full block">
+                        <Button className="w-full" variant="outline">
+                            <FileText className="h-4 w-4 mr-2" /> View Report
+                        </Button>
+                    </Link>
                 )}
             </div>
         </div>
