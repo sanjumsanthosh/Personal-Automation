@@ -11,7 +11,8 @@ import {
     type SortingState,
     type VisibilityState,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Trash2, Pencil, Settings2, LayoutGrid, LayoutList } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Trash2, Pencil, Settings2, LayoutGrid, LayoutList, Play } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -49,8 +50,12 @@ import {
 } from '@/components/ui/table'
 import type { Entry, EntryStatus, Type } from '@/lib/types'
 
+interface EntryWithRun extends Entry {
+    processing_runs?: { name: string; status: string } | null
+}
+
 interface EntriesDataTableProps {
-    data: Entry[]
+    data: EntryWithRun[]
     types: Type[]
     onEdit: (id: string, updates: { content?: string; type_id?: string; status?: EntryStatus }) => void
     onBulkEdit: (ids: string[], updates: { type_id?: string; status?: EntryStatus }) => void
@@ -61,9 +66,17 @@ interface EntriesDataTableProps {
 
 const STATUS_OPTIONS: { value: EntryStatus; label: string; color: string }[] = [
     { value: 'pending', label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
-    { value: 'processed', label: 'Processed', color: 'bg-blue-100 text-blue-800' },
+    { value: 'processing', label: 'Processing', color: 'bg-blue-100 text-blue-800' },
+    { value: 'processed', label: 'Processed', color: 'bg-green-100 text-green-800' },
     { value: 'archived', label: 'Archived', color: 'bg-gray-100 text-gray-800' },
 ]
+
+const RUN_STATUS_COLORS: Record<string, string> = {
+    created: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+    running: 'bg-blue-100 text-blue-700 border-blue-300',
+    completed: 'bg-green-100 text-green-700 border-green-300',
+    failed: 'bg-red-100 text-red-700 border-red-300',
+}
 
 // Hook for detecting mobile screen
 function useIsMobile(breakpoint = 768) {
@@ -272,7 +285,7 @@ function EntryCard({
     onEdit,
     onDelete,
 }: {
-    entry: Entry
+    entry: EntryWithRun
     types: Type[]
     isSelected: boolean
     onSelect: (checked: boolean) => void
@@ -300,6 +313,16 @@ function EntryCard({
                             <span className={`px-2 py-1 rounded-full ${statusOption?.color || 'bg-gray-100'}`}>
                                 {statusOption?.label || entry.status}
                             </span>
+                            {entry.processing_runs && (
+                                <Link
+                                    to="/runs"
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border ${RUN_STATUS_COLORS[entry.processing_runs.status] || 'bg-gray-100'}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <Play className="h-3 w-3" />
+                                    <span className="truncate max-w-[80px]">{entry.processing_runs.name}</span>
+                                </Link>
+                            )}
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
                             {new Date(entry.created_at).toLocaleDateString()}
@@ -374,7 +397,7 @@ export function EntriesDataTable({
         }
     }
 
-    const columns: ColumnDef<Entry>[] = React.useMemo(
+    const columns: ColumnDef<EntryWithRun>[] = React.useMemo(
         () => [
             {
                 id: 'select',
@@ -433,6 +456,25 @@ export function EntriesDataTable({
                         <span className={`inline-flex rounded-full px-2 py-1 text-xs ${statusOption?.color || 'bg-gray-100 text-gray-800'}`}>
                             {statusOption?.label || row.original.status}
                         </span>
+                    )
+                },
+            },
+            {
+                id: 'run',
+                header: 'Run',
+                cell: ({ row }) => {
+                    const entry = row.original
+                    if (!entry.processing_runs) {
+                        return <span className="text-gray-400 text-xs">—</span>
+                    }
+                    return (
+                        <Link
+                            to="/runs"
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${RUN_STATUS_COLORS[entry.processing_runs.status] || 'bg-gray-100'}`}
+                        >
+                            <Play className="h-3 w-3" />
+                            <span className="truncate max-w-[100px]">{entry.processing_runs.name}</span>
+                        </Link>
                     )
                 },
             },

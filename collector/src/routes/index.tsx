@@ -45,9 +45,18 @@ function Dashboard() {
     queryFn: async () => {
       let query = supabase
         .from('entries')
-        .select('*')
-        .eq('status', statusFilter)
+        .select(`
+          *,
+          processing_runs:run_id(name, status)
+        `)
         .order('created_at', { ascending: false })
+
+      // Show both pending and processing when 'pending' filter is selected
+      if (statusFilter === 'pending') {
+        query = query.in('status', ['pending', 'processing'])
+      } else {
+        query = query.eq('status', statusFilter)
+      }
 
       if (selectedTypes.length > 0) {
         query = query.in('type_id', selectedTypes)
@@ -188,7 +197,7 @@ function Dashboard() {
       </div>
 
       {/* Filters */}
-      <div className="max-w-6xl mx-auto px-4 py-4 space-y-3">
+      <div className="max-w-6xl mx-auto px-2 py-2 space-y-2">
         <div>
           <Label className="text-sm text-gray-600 mb-1 block">Filter by Type</Label>
           <TypeSelector value={selectedTypes} onChange={setSelectedTypes} />
@@ -210,7 +219,7 @@ function Dashboard() {
       </div>
 
       {/* Data Table */}
-      <div className="max-w-6xl mx-auto px-4 pb-24">
+      <div className="max-w-6xl mx-auto px-2 pb-20">
         {selectedTypes.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             <Inbox className="w-12 h-12 mx-auto mb-3 opacity-50" />

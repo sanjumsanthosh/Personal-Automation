@@ -1,6 +1,6 @@
 import { HeadContent, Outlet, Scripts, createRootRoute, Link, useRouterState } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Inbox, FileText, Archive } from 'lucide-react'
+import { Inbox, Play, FileText } from 'lucide-react'
 
 import appCss from '../styles.css?url'
 
@@ -56,8 +56,8 @@ function BottomNav() {
 
   const navItems = [
     { to: '/', icon: Inbox, label: 'Dashboard' },
-    { to: '/explore', icon: FileText, label: 'Explore' },
-    { to: '/archive', icon: Archive, label: 'Archive' },
+    { to: '/runs', icon: Play, label: 'Runs' },
+    { to: '/reports', icon: FileText, label: 'Reports' },
   ]
 
   return (

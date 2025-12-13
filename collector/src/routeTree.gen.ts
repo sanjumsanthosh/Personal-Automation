@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RunsRouteImport } from './routes/runs'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,14 +20,29 @@ import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api
 import { Route as DemoFormSimpleRouteImport } from './routes/demo/form.simple'
 import { Route as DemoFormAddressRouteImport } from './routes/demo/form.address'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as ApiV1RunRouteImport } from './routes/api/v1.run'
+import { Route as ApiV1ReportsRouteImport } from './routes/api/v1.reports'
 import { Route as ApiV1ReportRouteImport } from './routes/api/v1.report'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as ApiV1RunIdRouteImport } from './routes/api/v1.run.$id'
 import { Route as ApiV1ListTypeRouteImport } from './routes/api/v1.list.$type'
+import { Route as ApiV1RunRunIdClaimRouteImport } from './routes/api/v1.run.$runId.claim'
+import { Route as ApiV1RunIdTriggerRouteImport } from './routes/api/v1.run.$id.trigger'
 import { Route as ApiV1ReportIdDoneRouteImport } from './routes/api/v1.report.$id.done'
 
+const RunsRoute = RunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExploreRoute = ExploreRouteImport.update({
   id: '/explore',
   path: '/explore',
@@ -71,6 +88,16 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1RunRoute = ApiV1RunRouteImport.update({
+  id: '/api/v1/run',
+  path: '/api/v1/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1ReportsRoute = ApiV1ReportsRouteImport.update({
+  id: '/api/v1/reports',
+  path: '/api/v1/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1ReportRoute = ApiV1ReportRouteImport.update({
   id: '/api/v1/report',
   path: '/api/v1/report',
@@ -96,10 +123,25 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1RunIdRoute = ApiV1RunIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1RunRoute,
+} as any)
 const ApiV1ListTypeRoute = ApiV1ListTypeRouteImport.update({
   id: '/api/v1/list/$type',
   path: '/api/v1/list/$type',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1RunRunIdClaimRoute = ApiV1RunRunIdClaimRouteImport.update({
+  id: '/$runId/claim',
+  path: '/$runId/claim',
+  getParentRoute: () => ApiV1RunRoute,
+} as any)
+const ApiV1RunIdTriggerRoute = ApiV1RunIdTriggerRouteImport.update({
+  id: '/trigger',
+  path: '/trigger',
+  getParentRoute: () => ApiV1RunIdRoute,
 } as any)
 const ApiV1ReportIdDoneRoute = ApiV1ReportIdDoneRouteImport.update({
   id: '/$id/done',
@@ -111,56 +153,77 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/explore': typeof ExploreRoute
+  '/reports': typeof ReportsRoute
+  '/runs': typeof RunsRoute
   '/demo/table': typeof DemoTableRoute
   '/api/v1/report': typeof ApiV1ReportRouteWithChildren
+  '/api/v1/reports': typeof ApiV1ReportsRoute
+  '/api/v1/run': typeof ApiV1RunRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/form/address': typeof DemoFormAddressRoute
   '/demo/form/simple': typeof DemoFormSimpleRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
   '/api/v1/list/$type': typeof ApiV1ListTypeRoute
+  '/api/v1/run/$id': typeof ApiV1RunIdRouteWithChildren
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
   '/api/v1/report/$id/done': typeof ApiV1ReportIdDoneRoute
+  '/api/v1/run/$id/trigger': typeof ApiV1RunIdTriggerRoute
+  '/api/v1/run/$runId/claim': typeof ApiV1RunRunIdClaimRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/explore': typeof ExploreRoute
+  '/reports': typeof ReportsRoute
+  '/runs': typeof RunsRoute
   '/demo/table': typeof DemoTableRoute
   '/api/v1/report': typeof ApiV1ReportRouteWithChildren
+  '/api/v1/reports': typeof ApiV1ReportsRoute
+  '/api/v1/run': typeof ApiV1RunRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/form/address': typeof DemoFormAddressRoute
   '/demo/form/simple': typeof DemoFormSimpleRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
   '/api/v1/list/$type': typeof ApiV1ListTypeRoute
+  '/api/v1/run/$id': typeof ApiV1RunIdRouteWithChildren
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
   '/api/v1/report/$id/done': typeof ApiV1ReportIdDoneRoute
+  '/api/v1/run/$id/trigger': typeof ApiV1RunIdTriggerRoute
+  '/api/v1/run/$runId/claim': typeof ApiV1RunRunIdClaimRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/explore': typeof ExploreRoute
+  '/reports': typeof ReportsRoute
+  '/runs': typeof RunsRoute
   '/demo/table': typeof DemoTableRoute
   '/api/v1/report': typeof ApiV1ReportRouteWithChildren
+  '/api/v1/reports': typeof ApiV1ReportsRoute
+  '/api/v1/run': typeof ApiV1RunRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/form/address': typeof DemoFormAddressRoute
   '/demo/form/simple': typeof DemoFormSimpleRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
   '/api/v1/list/$type': typeof ApiV1ListTypeRoute
+  '/api/v1/run/$id': typeof ApiV1RunIdRouteWithChildren
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
   '/api/v1/report/$id/done': typeof ApiV1ReportIdDoneRoute
+  '/api/v1/run/$id/trigger': typeof ApiV1RunIdTriggerRoute
+  '/api/v1/run/$runId/claim': typeof ApiV1RunRunIdClaimRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -168,63 +231,88 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/explore'
+    | '/reports'
+    | '/runs'
     | '/demo/table'
     | '/api/v1/report'
+    | '/api/v1/reports'
+    | '/api/v1/run'
     | '/demo/api/names'
     | '/demo/form/address'
     | '/demo/form/simple'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
     | '/api/v1/list/$type'
+    | '/api/v1/run/$id'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
     | '/demo/start/ssr'
     | '/api/v1/report/$id/done'
+    | '/api/v1/run/$id/trigger'
+    | '/api/v1/run/$runId/claim'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/archive'
     | '/explore'
+    | '/reports'
+    | '/runs'
     | '/demo/table'
     | '/api/v1/report'
+    | '/api/v1/reports'
+    | '/api/v1/run'
     | '/demo/api/names'
     | '/demo/form/address'
     | '/demo/form/simple'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
     | '/api/v1/list/$type'
+    | '/api/v1/run/$id'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
     | '/demo/start/ssr'
     | '/api/v1/report/$id/done'
+    | '/api/v1/run/$id/trigger'
+    | '/api/v1/run/$runId/claim'
   id:
     | '__root__'
     | '/'
     | '/archive'
     | '/explore'
+    | '/reports'
+    | '/runs'
     | '/demo/table'
     | '/api/v1/report'
+    | '/api/v1/reports'
+    | '/api/v1/run'
     | '/demo/api/names'
     | '/demo/form/address'
     | '/demo/form/simple'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
     | '/api/v1/list/$type'
+    | '/api/v1/run/$id'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
     | '/demo/start/ssr/'
     | '/api/v1/report/$id/done'
+    | '/api/v1/run/$id/trigger'
+    | '/api/v1/run/$runId/claim'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchiveRoute: typeof ArchiveRoute
   ExploreRoute: typeof ExploreRoute
+  ReportsRoute: typeof ReportsRoute
+  RunsRoute: typeof RunsRoute
   DemoTableRoute: typeof DemoTableRoute
   ApiV1ReportRoute: typeof ApiV1ReportRouteWithChildren
+  ApiV1ReportsRoute: typeof ApiV1ReportsRoute
+  ApiV1RunRoute: typeof ApiV1RunRouteWithChildren
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoFormAddressRoute: typeof DemoFormAddressRoute
   DemoFormSimpleRoute: typeof DemoFormSimpleRoute
@@ -239,6 +327,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/runs': {
+      id: '/runs'
+      path: '/runs'
+      fullPath: '/runs'
+      preLoaderRoute: typeof RunsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/explore': {
       id: '/explore'
       path: '/explore'
@@ -302,6 +404,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/run': {
+      id: '/api/v1/run'
+      path: '/api/v1/run'
+      fullPath: '/api/v1/run'
+      preLoaderRoute: typeof ApiV1RunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/reports': {
+      id: '/api/v1/reports'
+      path: '/api/v1/reports'
+      fullPath: '/api/v1/reports'
+      preLoaderRoute: typeof ApiV1ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/report': {
       id: '/api/v1/report'
       path: '/api/v1/report'
@@ -337,12 +453,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/run/$id': {
+      id: '/api/v1/run/$id'
+      path: '/$id'
+      fullPath: '/api/v1/run/$id'
+      preLoaderRoute: typeof ApiV1RunIdRouteImport
+      parentRoute: typeof ApiV1RunRoute
+    }
     '/api/v1/list/$type': {
       id: '/api/v1/list/$type'
       path: '/api/v1/list/$type'
       fullPath: '/api/v1/list/$type'
       preLoaderRoute: typeof ApiV1ListTypeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/run/$runId/claim': {
+      id: '/api/v1/run/$runId/claim'
+      path: '/$runId/claim'
+      fullPath: '/api/v1/run/$runId/claim'
+      preLoaderRoute: typeof ApiV1RunRunIdClaimRouteImport
+      parentRoute: typeof ApiV1RunRoute
+    }
+    '/api/v1/run/$id/trigger': {
+      id: '/api/v1/run/$id/trigger'
+      path: '/trigger'
+      fullPath: '/api/v1/run/$id/trigger'
+      preLoaderRoute: typeof ApiV1RunIdTriggerRouteImport
+      parentRoute: typeof ApiV1RunIdRoute
     }
     '/api/v1/report/$id/done': {
       id: '/api/v1/report/$id/done'
@@ -366,12 +503,42 @@ const ApiV1ReportRouteWithChildren = ApiV1ReportRoute._addFileChildren(
   ApiV1ReportRouteChildren,
 )
 
+interface ApiV1RunIdRouteChildren {
+  ApiV1RunIdTriggerRoute: typeof ApiV1RunIdTriggerRoute
+}
+
+const ApiV1RunIdRouteChildren: ApiV1RunIdRouteChildren = {
+  ApiV1RunIdTriggerRoute: ApiV1RunIdTriggerRoute,
+}
+
+const ApiV1RunIdRouteWithChildren = ApiV1RunIdRoute._addFileChildren(
+  ApiV1RunIdRouteChildren,
+)
+
+interface ApiV1RunRouteChildren {
+  ApiV1RunIdRoute: typeof ApiV1RunIdRouteWithChildren
+  ApiV1RunRunIdClaimRoute: typeof ApiV1RunRunIdClaimRoute
+}
+
+const ApiV1RunRouteChildren: ApiV1RunRouteChildren = {
+  ApiV1RunIdRoute: ApiV1RunIdRouteWithChildren,
+  ApiV1RunRunIdClaimRoute: ApiV1RunRunIdClaimRoute,
+}
+
+const ApiV1RunRouteWithChildren = ApiV1RunRoute._addFileChildren(
+  ApiV1RunRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchiveRoute: ArchiveRoute,
   ExploreRoute: ExploreRoute,
+  ReportsRoute: ReportsRoute,
+  RunsRoute: RunsRoute,
   DemoTableRoute: DemoTableRoute,
   ApiV1ReportRoute: ApiV1ReportRouteWithChildren,
+  ApiV1ReportsRoute: ApiV1ReportsRoute,
+  ApiV1RunRoute: ApiV1RunRouteWithChildren,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoFormAddressRoute: DemoFormAddressRoute,
   DemoFormSimpleRoute: DemoFormSimpleRoute,

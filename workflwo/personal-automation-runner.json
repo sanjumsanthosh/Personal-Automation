@@ -1,0 +1,902 @@
+{
+  "name": "Personal Automation - Run Research (Webhook: runId) [LangChain+Perplexity+Gemini]",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "learn-research",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -920,
+        120
+      ],
+      "id": "0a2c7d2b-7c1b-4b2f-b2a4-2e4d9d8d6fd1",
+      "name": "Webhook (runId)",
+      "webhookId": "cdb75f0e-5a33-4d36-a9c1-6a4512f23b59"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3c9e2a5-2c27-4c35-90d2-fb6d6b6a8e42",
+              "name": "baseUrl",
+              "value": "https://personal-automation.vercel.app",
+              "type": "string"
+            },
+            {
+              "id": "2d5e7c4b-1b10-4f0b-9c33-0199fbbb8e8a",
+              "name": "runId",
+              "value": "={{$json.query.runId}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -700,
+        120
+      ],
+      "id": "f9b1a1dc-c4ed-4c36-82c6-8c4e9a1b6ae2",
+      "name": "Init"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.baseUrl}}/api/v1/run/{{$json.runId}}",
+        "method": "GET",
+        "responseFormat": "json",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -460,
+        120
+      ],
+      "id": "c01f9136-51ab-4a48-8576-5c2c6f3c2e3e",
+      "name": "Get Run (no auth)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.statusCode}}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -220,
+        120
+      ],
+      "id": "2f9f1b15-1fdb-40d0-9cc5-3cc5f21a9f73",
+      "name": "Run OK?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\nif (!body || !body.id) {\n  return [{ json: { error: 'Run not found or invalid response', details: $json } }];\n}\nreturn [{ json: { ...$json, run: body } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        120
+      ],
+      "id": "f3b1f0a1-7cc1-4a4c-9d4a-7b4c15e5d7f0",
+      "name": "Extract Run"
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Extract Run'].json.run.id}}",
+        "method": "PATCH",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"status\": \"running\",\n  \"started_at\": \"={{new Date().toISOString()}}\"\n}",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        120
+      ],
+      "id": "7a5b8227-57ab-4cf4-8e2e-5a8c43b8d7df",
+      "name": "Update Run -> running (no auth)"
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Extract Run'].json.run.id}}/claim",
+        "method": "POST",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"type_id\": \"={{$node['Extract Run'].json.run.type_id}}\",\n  \"limit\": \"={{$node['Extract Run'].json.run.limit_count}}\"\n}",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        120
+      ],
+      "id": "7c49c8f0-7a4e-4b94-a7d4-1d7f87b7e9a1",
+      "name": "Claim Entries (no auth)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.statusCode}}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        760,
+        120
+      ],
+      "id": "b24a7c66-bb0d-4d8a-bb0b-d4adbc9e28e1",
+      "name": "Claim OK?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\nconst entries = body?.entries || [];\nconst entry_ids = body?.entry_ids || entries.map(e => e.id);\nreturn [{ json: { entries, entry_ids } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        120
+      ],
+      "id": "8c18b9ef-2cc5-4c90-880a-62db7f9cfe31",
+      "name": "Extract Claimed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.entries.length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1240,
+        120
+      ],
+      "id": "4abf35b0-22db-4bd1-b3fd-7cf3d8a2a0a4",
+      "name": "Has Entries?"
+    },
+    {
+      "parameters": {
+        "text": "={{JSON.stringify($node['Extract Claimed'].json.entries)}}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a research assistant. Convert the provided JSON array of entries into a JSON array named cards. Each card MUST include: entry_id, title, why_it_matters (1-2 sentences), refined_question (specific, searchable), keywords (array of strings). Output ONLY valid JSON.",
+              "role": "system"
+            },
+            {
+              "message": "Entries JSON:\n\n{{JSON.stringify($node['Extract Claimed'].json.entries)}}",
+              "role": "user"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1480,
+        120
+      ],
+      "id": "1bdb9c25-1a3f-42cf-9f6d-45dc8b2bd001",
+      "name": "Basic LLM Chain (Groq Cards)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        300
+      ],
+      "id": "45cf873c-b8f9-4c6c-85e5-dc4b51d3ff75",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "zpyKK3aC3kQssNq5",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const pickText = (obj) => {\n  // Common shapes from AI nodes/templates\n  return obj?.text || obj?.output || obj?.response || obj?.data?.text || obj?.result || '';\n};\n\nconst raw = $json;\nconst content = pickText(raw);\nif (!content || typeof content !== 'string') {\n  return [{ json: { error: 'Groq chain returned no text content', raw } }];\n}\n\nlet cards;\ntry {\n  cards = JSON.parse(content);\n} catch (e) {\n  // Sometimes the chain wraps JSON in text; try a last-resort extraction\n  const m = content.match(/\\[[\\s\\S]*\\]/);\n  if (m) {\n    try { cards = JSON.parse(m[0]); } catch (e2) {\n      return [{ json: { error: 'Failed to parse cards JSON', parseError: e2.message, rawText: content } }];\n    }\n  } else {\n    return [{ json: { error: 'Failed to parse cards JSON', parseError: e.message, rawText: content } }];\n  }\n}\n\nreturn [{ json: { cards } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        120
+      ],
+      "id": "c3b8d4ac-1c0a-45cf-9a7a-79e9ab90bb8f",
+      "name": "Parse Cards JSON"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cards = $json.cards || [];\nconst combined = cards.map((c, i) => `${i + 1}. ${c.refined_question}`).join('\\n');\nreturn [{ json: { cards, combinedQuery: combined } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        120
+      ],
+      "id": "f6e2e11a-562e-42b7-86a3-2c932ec8d979",
+      "name": "Build Perplexity Query"
+    },
+    {
+      "parameters": {
+        "messages": {
+          "message": [
+            {
+              "role": "system",
+              "content": "For each numbered question, gather detailed raw information and include sources/URLs when possible."
+            },
+            {
+              "role": "user",
+              "content": "={{$node['Build Perplexity Query'].json.combinedQuery}}"
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexity",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        120
+      ],
+      "id": "dc8b4400-358d-4abf-a071-357c3371265e",
+      "name": "Perplexity Research",
+      "credentials": {
+        "perplexityApi": {
+          "id": "3lHjwQludnHPzjhC",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json;\nconst text = raw?.text || raw?.content || raw?.choices?.[0]?.message?.content || raw?.data?.text || '';\nconst citations = raw?.citations || raw?.search_results || raw?.sources || [];\nreturn [{ json: { perplexityText: text, citations } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        120
+      ],
+      "id": "62d650ff-19c1-4caa-b20c-0c4c8f00c4b3",
+      "name": "Extract Perplexity"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "Write a tutorial-style markdown report.\n\nRules:\n- Use ## headings per topic.\n- Explain simply.\n- Keep it readable.\n- Add a short Sources section at the end with URLs.\n\nResearch cards (JSON):\n{{JSON.stringify($node['Build Perplexity Query'].json.cards)}}\n\nRaw research findings:\n{{$node['Extract Perplexity'].json.perplexityText}}\n\nCitations JSON:\n{{JSON.stringify($node['Extract Perplexity'].json.citations)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        2680,
+        120
+      ],
+      "id": "60225409-d048-4961-af8e-779ab39e9f8c",
+      "name": "Gemini -> Markdown",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "F5kdws7n8N8OQzMN",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json;\nconst markdown = raw?.text || raw?.content || raw?.candidates?.[0]?.content?.parts?.[0]?.text || raw?.data?.text || raw?.output || '';\nif (!markdown || typeof markdown !== 'string') {\n  return [{ json: { error: 'Gemini returned no markdown', raw } }];\n}\nreturn [{ json: { markdown } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2920,
+        120
+      ],
+      "id": "c6de6f7d-8c53-4a98-9502-2b7c5a24d3fd",
+      "name": "Extract Markdown"
+    },
+    {
+      "parameters": {
+        "jsCode": "const run = $node['Extract Run'].json.run;\nconst claim = $node['Extract Claimed'].json;\nconst sources = $node['Extract Perplexity'].json.citations;\nconst markdown = $json.markdown;\n\nreturn [{\n  json: {\n    run_id: run.id,\n    name: run.name,\n    type: run.type_id,\n    report: markdown,\n    entry_ids: claim.entry_ids,\n    sources\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3160,
+        120
+      ],
+      "id": "d9fdc925-d4c9-4db1-a6f8-3d4e4b7752b4",
+      "name": "Prepare Report Payload"
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/report",
+        "method": "POST",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{JSON.stringify($json)}}",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3400,
+        120
+      ],
+      "id": "52c6a2b5-0a9e-4b49-9e9b-77f7a9e32e8b",
+      "name": "Save Report (no auth)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.statusCode}}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3640,
+        120
+      ],
+      "id": "d7d1b2c6-3f50-4b40-bf53-629c7aa8b1b6",
+      "name": "Report Saved?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $json.body;\nreturn [{ json: { report_id: report?.id || report?.report_id, report } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3880,
+        120
+      ],
+      "id": "8dddeff1-7d70-4b0a-9e8f-3c74ae9b6c21",
+      "name": "Extract Report ID"
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Extract Run'].json.run.id}}",
+        "method": "PATCH",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"status\": \"completed\",\n  \"completed_at\": \"={{new Date().toISOString()}}\",\n  \"report_id\": \"={{$node['Extract Report ID'].json.report_id}}\"\n}",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4120,
+        120
+      ],
+      "id": "ad9c4180-7bd8-42c8-8a3b-3cc9c0a3bcb0",
+      "name": "Update Run -> completed (no auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"run_id\": \"{{$node['Init'].json.runId}}\",\n  \"report_id\": \"{{$node['Extract Report ID'].json.report_id}}\",\n  \"entries_processed\": {{$node['Extract Claimed'].json.entry_ids.length}}\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4360,
+        120
+      ],
+      "id": "a9e6f9b9-1f58-46d0-a2af-6a2fda5fda1e",
+      "name": "Respond Success"
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Init'].json.runId}}",
+        "method": "PATCH",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"status\": \"completed\",\n  \"completed_at\": \"={{new Date().toISOString()}}\"\n}",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1480,
+        320
+      ],
+      "id": "4d0c48b9-6c4c-4bdf-9f8f-1a7a34c8b439",
+      "name": "Update Run -> completed (no entries, no auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"run_id\": \"{{$node['Init'].json.runId}}\",\n  \"message\": \"No pending entries to process\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1720,
+        320
+      ],
+      "id": "4c6f1f50-d8cc-4d19-9e66-5e2fd2b9e13a",
+      "name": "Respond No Work"
+    },
+    {
+      "parameters": {
+        "jsCode": "const runId = $node['Init'].json.runId;\nconst err = $json.error || 'Workflow failed';\nreturn [{ json: { runId, error: err } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        -120
+      ],
+      "id": "a1c8d6e2-7bb0-4a2d-bf28-4a9f3a224e7a",
+      "name": "Prepare Error"
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Init'].json.baseUrl}}/api/v1/run/{{$node['Init'].json.runId}}",
+        "method": "PATCH",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\n  \"status\": \"failed\",\n  \"completed_at\": \"={{new Date().toISOString()}}\",\n  \"error_message\": \"={{$node['Prepare Error'].json.error}}\"\n}",
+        "options": {
+          "response": {
+            "includeResponseHeaders": true,
+            "includeResponseStatusCode": true
+          },
+          "neverError": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        -120
+      ],
+      "id": "f4b87d17-dc8a-4a1d-9ab8-fb0f67d2c65b",
+      "name": "Update Run -> failed (no auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"run_id\": \"{{$node['Init'].json.runId}}\",\n  \"error\": \"={{$node['Prepare Error'].json.error}}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        -120
+      ],
+      "id": "c1c5d7a1-88a2-4f73-bdc1-43df7b5c2c1f",
+      "name": "Respond Error"
+    }
+  ],
+  "connections": {
+    "Webhook (runId)": {
+      "main": [
+        [
+          {
+            "node": "Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init": {
+      "main": [
+        [
+          {
+            "node": "Get Run (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Run (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Run OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run OK?": {
+      "main": [
+        [
+          {
+            "node": "Extract Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Run": {
+      "main": [
+        [
+          {
+            "node": "Update Run -> running (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> running (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Claim Entries (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Entries (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Claim OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim OK?": {
+      "main": [
+        [
+          {
+            "node": "Extract Claimed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Claimed": {
+      "main": [
+        [
+          {
+            "node": "Has Entries?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Entries?": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain (Groq Cards)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Run -> completed (no entries, no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain (Groq Cards)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain (Groq Cards)": {
+      "main": [
+        [
+          {
+            "node": "Parse Cards JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cards JSON": {
+      "main": [
+        [
+          {
+            "node": "Build Perplexity Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Perplexity Query": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Research": {
+      "main": [
+        [
+          {
+            "node": "Extract Perplexity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Perplexity": {
+      "main": [
+        [
+          {
+            "node": "Gemini -> Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini -> Markdown": {
+      "main": [
+        [
+          {
+            "node": "Extract Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Markdown": {
+      "main": [
+        [
+          {
+            "node": "Prepare Report Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Report Payload": {
+      "main": [
+        [
+          {
+            "node": "Save Report (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Report (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Report Saved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Saved?": {
+      "main": [
+        [
+          {
+            "node": "Extract Report ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Report ID": {
+      "main": [
+        [
+          {
+            "node": "Update Run -> completed (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> completed (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> completed (no entries, no auth)": {
+      "main": [
+        [
+          {
+            "node": "Respond No Work",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error": {
+      "main": [
+        [
+          {
+            "node": "Update Run -> failed (no auth)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Run -> failed (no auth)": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
