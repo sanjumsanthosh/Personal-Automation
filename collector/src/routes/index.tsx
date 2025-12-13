@@ -78,8 +78,8 @@ function Dashboard() {
   })
 
   const updateEntry = useMutation({
-    mutationFn: async ({ id, content }: { id: string; content: string }) => {
-      return supabase.from('entries').update({ content }).eq('id', id)
+    mutationFn: async ({ id, updates }: { id: string; updates: { content?: string; type_id?: string; status?: EntryStatus } }) => {
+      return supabase.from('entries').update(updates).eq('id', id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entries'] })
@@ -95,17 +95,43 @@ function Dashboard() {
     },
   })
 
+  const bulkUpdateEntries = useMutation({
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: { type_id?: string; status?: EntryStatus } }) => {
+      return supabase.from('entries').update(updates).in('id', ids)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries'] })
+    },
+  })
+
+  const bulkDeleteEntries = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return supabase.from('entries').delete().in('id', ids)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries'] })
+    },
+  })
+
   const handlePaste = async () => {
     const text = await navigator.clipboard.readText()
     setNewContent(text)
   }
 
-  const handleEdit = (id: string, content: string) => {
-    updateEntry.mutate({ id, content })
+  const handleEdit = (id: string, updates: { content?: string; type_id?: string; status?: EntryStatus }) => {
+    updateEntry.mutate({ id, updates })
+  }
+
+  const handleBulkEdit = (ids: string[], updates: { type_id?: string; status?: EntryStatus }) => {
+    bulkUpdateEntries.mutate({ ids, updates })
   }
 
   const handleDelete = (id: string) => {
     deleteEntry.mutate(id)
+  }
+
+  const handleBulkDelete = (ids: string[]) => {
+    bulkDeleteEntries.mutate(ids)
   }
 
   return (
@@ -173,8 +199,8 @@ function Dashboard() {
               key={status}
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${statusFilter === status
-                  ? 'bg-gray-900 text-white border-gray-900'
-                  : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
                 }`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -195,7 +221,9 @@ function Dashboard() {
             data={entries}
             types={types}
             onEdit={handleEdit}
+            onBulkEdit={handleBulkEdit}
             onDelete={handleDelete}
+            onBulkDelete={handleBulkDelete}
             isLoading={isLoading}
           />
         )}

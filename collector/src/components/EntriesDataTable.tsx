@@ -10,13 +10,26 @@ import {
     type ColumnFiltersState,
     type SortingState,
     type VisibilityState,
-    type Table as TableType,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Trash2, Pencil, Check, X } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Trash2, Pencil, Settings2, LayoutGrid, LayoutList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -34,29 +47,307 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import type { Entry, Type } from '@/lib/types'
+import type { Entry, EntryStatus, Type } from '@/lib/types'
 
 interface EntriesDataTableProps {
     data: Entry[]
     types: Type[]
-    onEdit: (id: string, content: string) => void
+    onEdit: (id: string, updates: { content?: string; type_id?: string; status?: EntryStatus }) => void
+    onBulkEdit: (ids: string[], updates: { type_id?: string; status?: EntryStatus }) => void
     onDelete: (id: string) => void
+    onBulkDelete: (ids: string[]) => void
     isLoading?: boolean
+}
+
+const STATUS_OPTIONS: { value: EntryStatus; label: string; color: string }[] = [
+    { value: 'pending', label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 'processed', label: 'Processed', color: 'bg-blue-100 text-blue-800' },
+    { value: 'archived', label: 'Archived', color: 'bg-gray-100 text-gray-800' },
+]
+
+// Hook for detecting mobile screen
+function useIsMobile(breakpoint = 768) {
+    const [isMobile, setIsMobile] = React.useState(false)
+
+    React.useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < breakpoint)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [breakpoint])
+
+    return isMobile
+}
+
+// Single Entry Edit Popover
+function EditPopover({
+    entry,
+    types,
+    onSave,
+    children,
+}: {
+    entry: Entry
+    types: Type[]
+    onSave: (updates: { content?: string; type_id?: string; status?: EntryStatus }) => void
+    children: React.ReactNode
+}) {
+    const [open, setOpen] = React.useState(false)
+    const [content, setContent] = React.useState(entry.content)
+    const [typeId, setTypeId] = React.useState(entry.type_id)
+    const [status, setStatus] = React.useState<EntryStatus>(entry.status)
+
+    const handleSave = () => {
+        onSave({ content, type_id: typeId, status })
+        setOpen(false)
+    }
+
+    React.useEffect(() => {
+        if (open) {
+            setContent(entry.content)
+            setTypeId(entry.type_id)
+            setStatus(entry.status)
+        }
+    }, [open, entry])
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>{children}</PopoverTrigger>
+            <PopoverContent className="w-96" align="end">
+                <div className="grid gap-4">
+                    <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Edit Entry</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Update the entry details below.
+                        </p>
+                    </div>
+                    <div className="grid gap-3">
+                        <div className="grid gap-2">
+                            <Label htmlFor="content">Content</Label>
+                            <Textarea
+                                id="content"
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                rows={4}
+                                className="text-sm"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-2">
+                                <Label htmlFor="type">Type</Label>
+                                <Select value={typeId} onValueChange={setTypeId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {types.map((type) => (
+                                            <SelectItem key={type.id} value={type.id}>
+                                                {type.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select value={status} onValueChange={(v) => setStatus(v as EntryStatus)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {STATUS_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleSave}>
+                            Save Changes
+                        </Button>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
+}
+
+// Bulk Edit Popover
+function BulkEditPopover({
+    selectedCount,
+    types,
+    onSave,
+    children,
+}: {
+    selectedCount: number
+    types: Type[]
+    onSave: (updates: { type_id?: string; status?: EntryStatus }) => void
+    children: React.ReactNode
+}) {
+    const [open, setOpen] = React.useState(false)
+    const [typeId, setTypeId] = React.useState<string>('')
+    const [status, setStatus] = React.useState<string>('')
+
+    const handleSave = () => {
+        const updates: { type_id?: string; status?: EntryStatus } = {}
+        if (typeId) updates.type_id = typeId
+        if (status) updates.status = status as EntryStatus
+        if (Object.keys(updates).length > 0) {
+            onSave(updates)
+        }
+        setOpen(false)
+        setTypeId('')
+        setStatus('')
+    }
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>{children}</PopoverTrigger>
+            <PopoverContent className="w-80" align="start">
+                <div className="grid gap-4">
+                    <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Bulk Edit</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Update {selectedCount} selected entries.
+                        </p>
+                    </div>
+                    <div className="grid gap-3">
+                        <div className="grid gap-2">
+                            <Label htmlFor="bulk-type">Type</Label>
+                            <Select value={typeId} onValueChange={setTypeId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Keep current" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {types.map((type) => (
+                                        <SelectItem key={type.id} value={type.id}>
+                                            {type.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="bulk-status">Status</Label>
+                            <Select value={status} onValueChange={setStatus}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Keep current" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {STATUS_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleSave}>
+                            Update {selectedCount} Entries
+                        </Button>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
+}
+
+// Entry Card Component for Card View
+function EntryCard({
+    entry,
+    types,
+    isSelected,
+    onSelect,
+    onEdit,
+    onDelete,
+}: {
+    entry: Entry
+    types: Type[]
+    isSelected: boolean
+    onSelect: (checked: boolean) => void
+    onEdit: (updates: { content?: string; type_id?: string; status?: EntryStatus }) => void
+    onDelete: () => void
+}) {
+    const getTypeName = (typeId: string) => types.find((t) => t.id === typeId)?.name || 'Unknown'
+    const statusOption = STATUS_OPTIONS.find((s) => s.value === entry.status)
+
+    return (
+        <Card className={`transition-colors ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+            <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                    <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={onSelect}
+                        className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm line-clamp-3 mb-2">{entry.content}</p>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="px-2 py-1 bg-gray-100 rounded-full">
+                                {getTypeName(entry.type_id)}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full ${statusOption?.color || 'bg-gray-100'}`}>
+                                {statusOption?.label || entry.status}
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                            {new Date(entry.created_at).toLocaleDateString()}
+                        </p>
+                    </div>
+                    <div className="flex gap-1">
+                        <EditPopover entry={entry} types={types} onSave={onEdit}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        </EditPopover>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600"
+                            onClick={() => {
+                                if (confirm('Delete this entry?')) onDelete()
+                            }}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
 }
 
 export function EntriesDataTable({
     data,
     types,
     onEdit,
+    onBulkEdit,
     onDelete,
+    onBulkDelete,
     isLoading,
 }: EntriesDataTableProps) {
+    const isMobile = useIsMobile()
+    const [viewMode, setViewMode] = React.useState<'table' | 'card'>('table')
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = React.useState({})
-    const [editingId, setEditingId] = React.useState<string | null>(null)
-    const [editingContent, setEditingContent] = React.useState('')
+
+    // Auto-switch to card view on mobile
+    React.useEffect(() => {
+        setViewMode(isMobile ? 'card' : 'table')
+    }, [isMobile])
 
     const getTypeName = React.useCallback(
         (typeId: string) => {
@@ -66,21 +357,21 @@ export function EntriesDataTable({
         [types]
     )
 
-    const handleStartEdit = (entry: Entry) => {
-        setEditingId(entry.id)
-        setEditingContent(entry.content)
+    const selectedRows = Object.keys(rowSelection).filter((key) => rowSelection[key as keyof typeof rowSelection])
+    const selectedEntries = data.filter((_, index) => selectedRows.includes(String(index)))
+
+    const handleBulkEdit = (updates: { type_id?: string; status?: EntryStatus }) => {
+        const ids = selectedEntries.map((e) => e.id)
+        onBulkEdit(ids, updates)
+        setRowSelection({})
     }
 
-    const handleSaveEdit = () => {
-        if (editingId && editingContent.trim()) {
-            onEdit(editingId, editingContent)
-            setEditingId(null)
+    const handleBulkDelete = () => {
+        if (confirm(`Delete ${selectedEntries.length} entries?`)) {
+            const ids = selectedEntries.map((e) => e.id)
+            onBulkDelete(ids)
+            setRowSelection({})
         }
-    }
-
-    const handleCancelEdit = () => {
-        setEditingId(null)
-        setEditingContent('')
     }
 
     const columns: ColumnDef<Entry>[] = React.useMemo(
@@ -118,64 +409,29 @@ export function EntriesDataTable({
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 ),
-                cell: ({ row }) => {
-                    const entry = row.original
-                    if (editingId === entry.id) {
-                        return (
-                            <div className="flex flex-col gap-2 py-2">
-                                <Textarea
-                                    value={editingContent}
-                                    onChange={(e) => setEditingContent(e.target.value)}
-                                    rows={3}
-                                    className="text-sm"
-                                />
-                                <div className="flex gap-2">
-                                    <Button size="sm" onClick={handleSaveEdit}>
-                                        <Check className="w-4 h-4 mr-1" />
-                                        Save
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                                        <X className="w-4 h-4 mr-1" />
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                        )
-                    }
-                    return (
-                        <div className="max-w-md truncate" title={entry.content}>
-                            {entry.content}
-                        </div>
-                    )
-                },
+                cell: ({ row }) => (
+                    <div className="max-w-md truncate" title={row.original.content}>
+                        {row.original.content}
+                    </div>
+                ),
             },
             {
                 accessorKey: 'type_id',
                 header: 'Type',
                 cell: ({ row }) => (
                     <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
-                        {getTypeName(row.getValue('type_id'))}
+                        {getTypeName(row.original.type_id)}
                     </span>
                 ),
-                filterFn: (row, id, value) => {
-                    return value.includes(row.getValue(id))
-                },
             },
             {
                 accessorKey: 'status',
                 header: 'Status',
                 cell: ({ row }) => {
-                    const status = row.getValue('status') as string
+                    const statusOption = STATUS_OPTIONS.find((s) => s.value === row.original.status)
                     return (
-                        <span
-                            className={`inline-flex rounded-full px-2 py-1 text-xs ${status === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : status === 'processed'
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-gray-100 text-gray-800'
-                                }`}
-                        >
-                            {status}
+                        <span className={`inline-flex rounded-full px-2 py-1 text-xs ${statusOption?.color || 'bg-gray-100 text-gray-800'}`}>
+                            {statusOption?.label || row.original.status}
                         </span>
                     )
                 },
@@ -212,44 +468,51 @@ export function EntriesDataTable({
                 cell: ({ row }) => {
                     const entry = row.original
                     return (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
+                        <div className="flex items-center gap-1">
+                            <EditPopover
+                                entry={entry}
+                                types={types}
+                                onSave={(updates) => onEdit(entry.id, updates)}
+                            >
+                                <Button variant="ghost" size="sm" className="h-8 px-2">
+                                    <Pencil className="h-4 w-4" />
                                 </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(entry.id)}>
-                                    Copy ID
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(entry.content)}>
-                                    Copy Content
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleStartEdit(entry)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        if (confirm('Delete this entry?')) {
-                                            onDelete(entry.id)
-                                        }
-                                    }}
-                                    className="text-red-600"
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            </EditPopover>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(entry.id)}>
+                                        Copy ID
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(entry.content)}>
+                                        Copy Content
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            if (confirm('Delete this entry?')) {
+                                                onDelete(entry.id)
+                                            }
+                                        }}
+                                        className="text-red-600"
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     )
                 },
             },
         ],
-        [editingId, editingContent, getTypeName, onDelete, onEdit]
+        [getTypeName, types, onDelete, onEdit]
     )
 
     const table = useReactTable({
@@ -274,7 +537,7 @@ export function EntriesDataTable({
     return (
         <div className="w-full">
             {/* Toolbar */}
-            <div className="flex items-center py-4 gap-2">
+            <div className="flex flex-wrap items-center py-4 gap-2">
                 <Input
                     placeholder="Filter content..."
                     value={(table.getColumn('content')?.getFilterValue() as string) ?? ''}
@@ -283,73 +546,148 @@ export function EntriesDataTable({
                     }
                     className="max-w-sm"
                 />
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="ml-auto">
-                            Columns <ChevronDown className="ml-2 h-4 w-4" />
+
+                {/* Bulk actions when rows are selected */}
+                {selectedEntries.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                            {selectedEntries.length} selected
+                        </span>
+                        <BulkEditPopover
+                            selectedCount={selectedEntries.length}
+                            types={types}
+                            onSave={handleBulkEdit}
+                        >
+                            <Button variant="outline" size="sm">
+                                <Settings2 className="mr-2 h-4 w-4" />
+                                Bulk Edit
+                            </Button>
+                        </BulkEditPopover>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={handleBulkDelete}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {table
-                            .getAllColumns()
-                            .filter((column) => column.getCanHide())
-                            .map((column) => (
-                                <DropdownMenuCheckboxItem
-                                    key={column.id}
-                                    className="capitalize"
-                                    checked={column.getIsVisible()}
-                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                >
-                                    {column.id.replace('_', ' ')}
-                                </DropdownMenuCheckboxItem>
-                            ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                    </div>
+                )}
+
+                <div className="ml-auto flex items-center gap-2">
+                    {/* View Toggle */}
+                    <div className="flex items-center border rounded-md">
+                        <Button
+                            variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setViewMode('table')}
+                        >
+                            <LayoutList className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'card' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setViewMode('card')}
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    {viewMode === 'table' && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    Columns <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {table
+                                    .getAllColumns()
+                                    .filter((column) => column.getCanHide())
+                                    .map((column) => (
+                                        <DropdownMenuCheckboxItem
+                                            key={column.id}
+                                            className="capitalize"
+                                            checked={column.getIsVisible()}
+                                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                        >
+                                            {column.id.replace('_', ' ')}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id}>
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(header.column.columnDef.header, header.getContext())}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    Loading...
-                                </TableCell>
-                            </TableRow>
-                        ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
+            {/* Content */}
+            {isLoading ? (
+                <div className="h-24 flex items-center justify-center text-gray-500">
+                    Loading...
+                </div>
+            ) : viewMode === 'card' ? (
+                /* Card View */
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {table.getRowModel().rows.length > 0 ? (
+                        table.getRowModel().rows.map((row) => (
+                            <EntryCard
+                                key={row.id}
+                                entry={row.original}
+                                types={types}
+                                isSelected={row.getIsSelected()}
+                                onSelect={(checked) => row.toggleSelected(checked)}
+                                onEdit={(updates) => onEdit(row.original.id, updates)}
+                                onDelete={() => onDelete(row.original.id)}
+                            />
+                        ))
+                    ) : (
+                        <div className="col-span-full text-center py-16 text-gray-500">
+                            No entries found.
+                        </div>
+                    )}
+                </div>
+            ) : (
+                /* Table View */
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    <Table>
+                        <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map((header) => (
+                                        <TableHead key={header.id}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </TableHead>
                                     ))}
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No entries found.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                            ))}
+                        </TableHeader>
+                        <TableBody>
+                            {table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map((row) => (
+                                    <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell key={cell.id}>
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </TableCell>
+                                        ))}
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                                        No entries found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
 
             {/* Pagination */}
             <div className="flex items-center justify-between py-4">
